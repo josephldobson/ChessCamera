@@ -234,8 +234,12 @@ def transform(lines_v, lines_h, original):
     m = cv.getPerspectiveTransform(pts1, pts2)
     dst = cv.warpPerspective(original, m, (1000, 1000))
     for i in [100, 200, 300, 400, 500, 600, 700, 800, 900]:
-        cv.line(dst, [0, i], [1000, i], (255, 0, 0), 1, cv.LINE_AA)
-        cv.line(dst, [i, 0], [i, 1000], (0, 255, 0), 1, cv.LINE_AA)
+        cv.line(dst, [0, i], [1000, i], (255, 255, 255), 15, cv.LINE_AA)
+        cv.line(dst, [i, 0], [i, 1000], (255, 255, 255), 15, cv.LINE_AA)
+    cv.rectangle(dst, (0, 0), (1000, 100), (255, 255, 255), -1)
+    cv.rectangle(dst, (0, 900), (1000, 1000), (255, 255, 255), -1)
+    cv.rectangle(dst, (0, 0), (100, 1000), (255, 255, 255), -1)
+    cv.rectangle(dst, (900, 0), (1000, 1000), (255, 255, 255), -1)
     return dst
 
 
@@ -255,7 +259,7 @@ def display_in_grid(img):
     points = intersection_of_lines(lines_v)
     point = gaussian_mode_of_points(points)
     lines_v = filter_vertical_lines(point, lines_v)
-
+    cv.imshow('resized', resized)
     lines_h = refilter_horizontal_lines(lines_h, lines_v, (1600, 800))
     transformed = transform(lines_v, lines_h, original)
     cv.imshow('ok', transformed)
@@ -265,12 +269,6 @@ def display_in_grid(img):
 
 def photos():
     st = time.time()
-    display_in_grid('chessboard_photos/random_pictures/chessboard3.jpg')
-    display_in_grid('chessboard_photos/random_pictures/chessboard4.jpg')
-    display_in_grid('chessboard_photos/random_pictures/chessboard5.png')
-    display_in_grid('chessboard_photos/random_pictures/chessboard6.jpeg')
-    display_in_grid('chessboard_photos/random_pictures/opencv_frame_0.png')
-    display_in_grid('chessboard_photos/random_pictures/opencv_frame_1.png')
     display_in_grid('chessboard_photos/chess_game/position1.jpg')
     display_in_grid('chessboard_photos/chess_game/position1.jpg')
     display_in_grid('chessboard_photos/chess_game/position2.jpg')
