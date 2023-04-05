@@ -1,70 +1,42 @@
 from linefinder import *
+import chess
+import chess.pgn
 
-
-def create_enlarged_boundaries(lines_h, lines_v):
-    points = np.array([[intersection_polar(i, j) for i in lines_v] for j in lines_h])
+def create_weird_boundaries(lines_h, lines_v, orientation):
+    points = np.array([[intersection_polar(i, j) for i in lines_h] for j in lines_v])
     squares = []
-    for i in reversed(range(8)):
-        for j in reversed(range(8)):
-            a = points[i][j+1]
-            b = points[i+1][j+1]
-            c = points[i+1][j]
-            d = points[i][j]
-            height = int((c[0]-b[0])*0.5+20)
-            if a[0] > b[0]:
-                e = [a[0], a[1]-height]
-                f = [b[0], b[1]-height]
-                g = b
-            else:
-                e = [a[0], a[1]-height]
-                f = a
-                g = b
-            if c[0] > d[0]:
-                m = c
-                n = [c[0], c[1]-height]
-                q = [d[0], d[1]-height]
-            else:
-                m = c
-                n = d
-                q = [d[0], d[1]-height]
-            squares.append([e, f, g, m, n, q])
-    squares = np.array(squares)
-    return squares
-
-
-def create_boundaries(lines_h, lines_v):
-    points = np.array([[intersection_polar(i, j) for i in lines_v] for j in lines_h])
-    squares = []
-    for i in reversed(range(8)):
-        for j in reversed(range(8)):
-            a = points[i][j+1]
-            b = points[i+1][j+1]
-            c = points[i+1][j]
-            d = points[i][j]
-            squares.append([a, b, c, d])
-
-    squares = np.array(squares)
-    return squares
-
-
-def create_weird_boundaries(lines_h, lines_v):
-    points = np.array([[intersection_polar(i, j) for i in lines_v] for j in lines_h])
-    squares = []
-    for i in reversed(range(8)):
-        for j in reversed(range(8)):
-            a = points[i][j+1]
-            b = points[i+1][j+1]
-            c = points[i+1][j]
-            d = points[i][j]
-            yes = np.array([a, b, c, d])
-            centre = np.mean(yes,axis=0)
-            centre = centre.astype(np.int32)
-            centre = centre.tolist()
-            a = centre + np.array([-40,10])
-            b = centre + np.array([40,10])
-            c = centre + np.array([20,-100])
-            d = centre + np.array([-20,-100])
-            squares.append([a, b, c, d])
+    if orientation == 'Left':
+        for i in reversed(range(8)):
+            for j in range(8):
+                a = points[i][j+1]
+                b = points[i+1][j+1]
+                c = points[i+1][j]
+                d = points[i][j]
+                yes = np.array([a, b, c, d])
+                centre = np.mean(yes,axis=0)
+                centre = centre.astype(np.int32)
+                centre = centre.tolist()
+                a = centre + np.array([-40,10])
+                b = centre + np.array([40,10])
+                c = centre + np.array([20,-100])
+                d = centre + np.array([-20,-100])
+                squares.append([a, b, c, d])
+    else:
+        for i in range(8):
+            for j in reversed(range(8)):
+                a = points[i][j+1]
+                b = points[i+1][j+1]
+                c = points[i+1][j]
+                d = points[i][j]
+                yes = np.array([a, b, c, d])
+                centre = np.mean(yes,axis=0)
+                centre = centre.astype(np.int32)
+                centre = centre.tolist()
+                a = centre + np.array([-40,10])
+                b = centre + np.array([40,10])
+                c = centre + np.array([20,-100])
+                d = centre + np.array([-20,-100])
+                squares.append([a, b, c, d])
 
     squares = np.array(squares)
     return squares
@@ -98,32 +70,9 @@ def transform(lines_v1, lines_h1, lines_v2, lines_h2, original):
     pts2 = np.float32([tl2, tr2, bl2, br2])
     m = cv.getPerspectiveTransform(pts1, pts2)
     dst = cv.warpPerspective(original, m, (1600, 800))
+
     return dst
 
-
-def find_colours_2(im):
-
-    # Find 4 colours
-    clusters = 4
-    small = cv.resize(im, (0, 0), fx=0.05, fy=0.05)
-    shap = small.shape
-    ar = small.reshape(np.product(shap[:2]), shap[2]).astype(float)
-    codes, dist = sp.cluster.vq.kmeans(ar, clusters)
-    codes = codes[codes[:, 2].argsort()]
-
-    # re-colour image
-    shap = im.shape
-    ar = im.reshape(np.product(shap[:2]), shap[2]).astype(float)
-    vecs, dist = sp.cluster.vq.vq(ar, codes)
-    c_new = [[0,255,0], [0,0,255], [255,255,255], [0,0,0]]
-    # c_new = [[255, 255, 255], [0, 0, 0], [255, 255, 255], [0, 0, 0]]
-    c = ar.copy()
-    for i, code in enumerate(codes):
-        c[sp.r_[np.where(vecs == i)], :] = c_new[i]
-    c = np.reshape(c, shap)
-    c = c.astype(np.uint8)
-
-    return c
 
 
 def give_values(bounds,img):
@@ -139,43 +88,71 @@ def give_values(bounds,img):
 
     return(np.array(lst))
 
+def best_candidate(values, board):
+    moves = list(board.legal_moves)
+
+    lst = []
+    for i in moves:
+
+        a = board.piece_map()
+        a = [a[j] if j in a else 'a' for j in range(64)]
 
 
-def test_image(file1, file2):
-    orig1 = cv.imread(file1)
+        board.push(i)
+        b = board.piece_map()
+
+        b = [b[j] if j in b else 'a' for j in range(64)]
+        change = np.array([0 if a[j] == b[j] else values[j] for j in range(64)])
+        val = change[change!=0].mean()
+        lst.append(val)
+        board.pop()
+
+    lst = np.array(lst)
+    value = np.argmax(lst)
+    board.push(moves[value])
+    return board, moves[value]
+
+def test_image(orig1, orig2, board, orientation):
     h = orig1.shape[0]
     img1 = orig1[int(h * 0.3):h, :]
     img1 = cv.resize(img1, (1600, 800), interpolation=cv.INTER_AREA)
     lines_h1, lines_v1, img1 = find_lines(img1, False)
 
-    orig2 = cv.imread(file2)
     img2 = orig2[int(h * 0.3):h, :]
     img2 = cv.resize(img2, (1600, 800), interpolation=cv.INTER_AREA)
-    lines_h2, lines_v2, img2 = find_lines(img2, False)
-    img1 = transform(lines_v1, lines_h1, lines_v2, lines_h2, img1)
 
     a = img1.astype(np.int16)
     b = img2.astype(np.int16)
+
     weird1 = np.subtract(a, b)/2
     weird1 = np.absolute(weird1).astype(np.uint8)
 
+    total_change = np.sum(weird1)
+    print(total_change)
+    if total_change > 200000000000   :
+        lines_h2, lines_v2, img2 = find_lines(img2, False)
+        img2 = transform(lines_v1, lines_h1, lines_v2, lines_h2, img1)
+        b = img2.astype(np.int16)
+        weird1 = np.subtract(a, b) / 2
+        weird1 = np.absolute(weird1).astype(np.uint8)
 
-    bounds = create_weird_boundaries(lines_h2,lines_v2)
+    weird1 = cv.blur(weird1, (15, 15))
+    weird1 = cv.blur(weird1, (17, 17))
+    cv.imshow('dif', weird1)
+
+    bounds = create_weird_boundaries(lines_h1, lines_v1, orientation)
 
     values = give_values(bounds, weird1)
-    indices = values.argsort()[-6:][::-1]
 
-    gray = cv.cvtColor(weird1, cv.COLOR_BGR2GRAY)
-    ret, thresh1 = cv.threshold(gray, 20, 255, cv.THRESH_BINARY)
-    cv.imshow('gray',thresh1)
+    board, move = best_candidate(values, board)
+    print("----------------")
+    print(board)
 
-
-
-
-    [cv.polylines(weird1,[bounds[i]],True,(255,255,255)) for i in indices]
-    cv.imshow('diff',weird1)
+    #indices = [0,1,2,3,8,9]
+    #[cv.polylines(img2, [bounds[i]], True, (255, 255, 255)) for i in indices]
+    cv.imshow('diff', img2)
     cv.waitKey(0)
-    return
+    return board
 
 imgs = ['chessboard_photos/chess_game/position1.jpg',
     'chessboard_photos/chess_game/position2.jpg',
@@ -203,5 +180,9 @@ imgs = ['chessboard_photos/chess_game/position1.jpg',
     'chessboard_photos/chess_game/position24.jpg',
     'chessboard_photos/chess_game/position25.jpg']
 
-for i in range(len(imgs)-1):
-    test_image(imgs[i],imgs[i+1])
+if __name__ == "__main__":
+    board = chess.Board()
+    for i in range(len(imgs2)-1):
+        im1 = cv.imread(imgs2[i])
+        im2 = cv.imread(imgs2[i+1])
+        board = test_image(im1,im2, board, 'Right')
