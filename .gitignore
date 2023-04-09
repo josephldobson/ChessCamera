@@ -1,2 +1,9 @@
 ~/PycharmProjects/ChessCamera/ChessgameDUCC/*.png
 *.pyc
+*.idea
+*.vscode
+**/ignored/*
+*.jpg
+*.png
+*.jpeg
+*.npz

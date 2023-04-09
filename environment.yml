@@ -1,0 +1,14 @@
+name: ChessGame
+channels:
+  - conda-forge
+  - pythonflaskserverapps
+  - defaults
+dependencies:
+  - python=3.10.9
+  - pip=23.0.1
+  - scipy
+  - numpy
+  - opencv
+
+  - pip:
+    - chess==1.9.4
